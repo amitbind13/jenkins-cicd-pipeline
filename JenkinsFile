@@ -1,83 +1,41 @@
 pipeline {
     agent any
-    
-    environment {
-        SONARQUBE_URL = 'http://your-sonarqube-server:9000'
-        SONARQUBE_TOKEN = credentials('sonarqube-token')
+
+    triggers {
+        // This triggers the pipeline on every commit to the 'main' branch
+        githubPush()
     }
-    
+
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/your-repo.git'
+                // Checkout the code from the repository
+                checkout scm
             }
         }
-        
+
         stage('Build') {
             steps {
-                sh './gradlew clean build'  // Change based on your project build tool
+                // Insert build commands here
+                echo 'Building project...'
+                // Example: sh './build-script.sh'
             }
         }
-        
-        stage('Code Quality Analysis') {
+
+        stage('Test') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh './gradlew sonarqube'
-                }
+                // Insert testing commands here
+                echo 'Running tests...'
+                // Example: sh './run-tests.sh'
             }
         }
-        
-        stage('Code Coverage') {
+
+        stage('Deploy') {
             steps {
-                sh './gradlew jacocoTestReport'
+                // Insert deployment commands here
+                echo 'Deploying project...'
+                // Example: sh './deploy.sh'
             }
-            post {
-                success {
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'build/reports/jacoco/test',
-                        reportFiles: 'index.html',
-                        reportName: 'JaCoCo Code Coverage Report'
-                    ])
-                }
-            }
-        }
-        
-        stage('Cyclomatic Complexity Check') {
-            steps {
-                sh 'lizard . > lizard_report.txt'
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'lizard_report.txt', fingerprint: true
-                }
-            }
-        }
-        
-        stage('Security Scan') {
-            steps {
-                sh 'dependency-check.sh --project myProject --scan . --format HTML --out dependency-check-report.html'
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true
-                }
-            }
-        }
-    }
-    
-    post {
-        success {
-            mail to: 'your-email@example.com', 
-                 subject: 'Jenkins Build Success', 
-                 body: 'The build passed successfully!'
-        }
-        failure {
-            mail to: 'your-email@example.com', 
-                 subject: 'Jenkins Build Failed', 
-                 body: 'The build failed. Check Jenkins for details.'
         }
     }
 }
