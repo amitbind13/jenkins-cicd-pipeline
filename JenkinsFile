@@ -1,41 +1,52 @@
 pipeline {
     agent any
-
     triggers {
-        // This triggers the pipeline on every commit to the 'main' branch
         githubPush()
     }
-
     stages {
         stage('Checkout') {
             steps {
-                // Checkout the code from the repository
                 checkout scm
             }
         }
-
         stage('Build') {
             steps {
-                // Insert build commands here
-                echo 'Building project...'
-                // Example: sh './build-script.sh'
+                sh 'mvn clean install'
             }
         }
-
-        stage('Test') {
+        stage('SonarQube Analysis') {
             steps {
-                // Insert testing commands here
-                echo 'Running tests...'
-                // Example: sh './run-tests.sh'
+                script {
+                    def scannerHome = tool 'SonarQubeScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
             }
         }
-
-        stage('Deploy') {
+        stage('Code Coverage') {
             steps {
-                // Insert deployment commands here
-                echo 'Deploying project...'
-                // Example: sh './deploy.sh'
+                sh 'mvn clean test jacoco:report'
+                jacoco()
             }
+        }
+        stage('Cyclomatic Complexity') {
+            steps {
+                sh 'lizard --cyclomatic src/'
+            }
+        }
+        stage('Security Vulnerability Scan') {
+            steps {
+                sh 'mvn dependency-check:check'
+            }
+        }
+    }
+    post {
+        success {
+            slackSend(channel: '#build-notifications', message: "Build successful!")
+        }
+        failure {
+            slackSend(channel: '#build-notifications', message: "Build failed!")
         }
     }
 }
